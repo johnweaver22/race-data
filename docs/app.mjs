@@ -2,6 +2,8 @@ import { sequence } from './engine.mjs';
 import { RaceCapture, formatClock } from './capture-model.mjs';
 import { createTapFeedback } from './tap-feedback.mjs';
 import { downloadCsv } from './csv-export.mjs';
+import { initializeProfiles } from './profiles-ui.mjs';
+import { fadedReportPhoto } from './profiles.mjs';
 
 const $ = id => document.getElementById(id);
 const form = $('setup-form');
@@ -13,9 +15,37 @@ let animation = null;
 let wakeLock = null;
 let wakeGeneration = 0;
 let resetDestination = 'capture';
+let profilesReturnView = 'setup';
+let preparedPdf = null;
+let pdfGeneration = 0;
+let pdfModule;
+const profiles = initializeProfiles();
 function clearExport() {
   $('export-csv').disabled = capture?.state !== 'complete';
   $('export-status').replaceChildren();
+}
+
+async function preparePdf() {
+  if (preparedPdf || capture?.state !== 'complete') return;
+  const generation = ++pdfGeneration;
+  const race = capture;
+  $('export-pdf').disabled = true;
+  $('export-pdf').textContent = 'Preparing PDF…';
+  $('pdf-status').textContent = 'Preparing your landscape report…';
+  try {
+    pdfModule ??= await import('./pdf-report.mjs');
+    const portrait = await fadedReportPhoto(race.config.photo);
+    const file = await pdfModule.createRacePdf(race.config, race.timestamps, { portrait });
+    if (generation !== pdfGeneration || capture !== race) return;
+    preparedPdf = file;
+    $('export-pdf').disabled = false;
+    $('export-pdf').textContent = 'Download PDF';
+    $('pdf-status').textContent = `Landscape PDF ready · ${file.pages} page${file.pages === 1 ? '' : 's'}.`;
+  } catch {
+    if (generation !== pdfGeneration || capture !== race) return;
+    $('export-pdf').disabled = false; $('export-pdf').textContent = 'Retry PDF';
+    $('pdf-status').textContent = 'Could not prepare the PDF. Retry PDF or download your CSV.';
+  }
 }
 
 const labels = {
@@ -37,7 +67,8 @@ const formatNumber = value => value === null ? '—' : value.toFixed(2);
 function readConfig() {
   const data = new FormData(form);
   return { distance: Number(data.get('distance')), pool: Number(data.get('pool')),
-    stroke: data.get('stroke'), swimmer: data.get('swimmer').trim(), meet: data.get('meet').trim() };
+    stroke: data.get('stroke'), swimmer: data.get('swimmer').trim(), meet: data.get('meet').trim(),
+    ...profiles.forRace(), raceDate: new Date().toISOString() };
 }
 
 function syncSetup() {
@@ -64,15 +95,17 @@ function syncSetup() {
 function showView(view) {
   activeView = view;
   document.body.dataset.view = view;
-  for (const name of ['setup', 'capture', 'results']) {
+  for (const name of ['setup', 'capture', 'results', 'profiles']) {
     $(`${name}-view`).hidden = name !== view;
     const nav = $(`nav-${name}`);
+    if (!nav) continue;
     if (name === view) nav.setAttribute('aria-current', 'step');
     else nav.removeAttribute('aria-current');
   }
   $('nav-setup').disabled = !!capture && capture.state !== 'ready';
   $('nav-capture').disabled = !capture || capture.state === 'complete';
   $('nav-results').disabled = capture?.state !== 'complete';
+  $('open-profiles').disabled = capture?.state === 'running' || capture?.state === 'interrupted';
   window.scrollTo({ top: 0, behavior: 'instant' });
 }
 
@@ -140,6 +173,7 @@ function paintCapture() {
   const next = capture.next;
   if (!next) return;
   $('nav-setup').disabled = capture.state !== 'ready';
+  $('open-profiles').disabled = capture.state !== 'ready';
   const count = capture.timestamps.length;
   const lengthCount = capture.config.distance / capture.config.pool;
   const length = Math.max(1, next.length);
@@ -242,6 +276,7 @@ function paintResults() {
   showView('results');
   $('results-title').setAttribute('tabindex', '-1');
   $('results-title').focus({ preventScroll: true });
+  void preparePdf();
 }
 
 function recordTap() {
@@ -308,6 +343,7 @@ $('new-race').addEventListener('click', () => askReset('setup'));
 $('reset-dialog').addEventListener('close', () => {
   if ($('reset-dialog').returnValue !== 'reset') { if (activeView === 'capture') tapButton.focus(); return; }
   clearExport();
+  preparedPdf = null; pdfGeneration++; $('pdf-status').replaceChildren();
   cancelAnimationFrame(animation);
   animation = null;
   void releaseWakeLock();
@@ -323,6 +359,21 @@ $('nav-capture').addEventListener('click', () => {
   showView('capture'); paintCapture(); void requestWakeLock();
 });
 $('nav-results').addEventListener('click', () => { if (capture?.state === 'complete') paintResults(); });
+$('open-profiles').addEventListener('click', () => {
+  if (capture?.state === 'running' || capture?.state === 'interrupted') return;
+  if (activeView === 'profiles') return;
+  profilesReturnView = activeView;
+  showView('profiles');
+});
+$('close-profiles').addEventListener('click', () => showView(profilesReturnView));
+$('export-pdf').addEventListener('click', () => {
+  if (capture?.state !== 'complete') return;
+  if (!preparedPdf) { void preparePdf(); return; }
+  try {
+    pdfModule.downloadRacePdf(preparedPdf);
+    $('pdf-status').textContent = 'PDF download requested. Open the .pdf file to view your report.';
+  } catch { $('pdf-status').textContent = 'Could not start the PDF download. Your results are still here.'; }
+});
 $('export-csv').addEventListener('click', () => {
   if (capture?.state !== 'complete') return;
   try {

@@ -2,7 +2,7 @@
 
 A race-day swimming metrics tapper, separate from Swim Clock.
 
-## Current build: capture, metrics and CSV download
+## Current build: capture, saved swimmers, CSV and landscape PDF
 
 - Race setup: swimmer, meet, pool length, race distance and stroke.
 - One large capture button advances through the fixed timing sequence.
@@ -28,7 +28,27 @@ CSV contains sections in one worksheet rather than separate workbook tabs.
 The legacy Excel generator and endpoint remain available to existing consumers;
 the current interface uses CSV. See `docs/csv-export.md`.
 
-PDF export remains for the next build step.
+The Download PDF control prepares a real A4 landscape PDF locally, then saves
+it synchronously from the button press. The approved layout includes a swimmer
+portrait fading into white, a solid speed curve on the left axis and dotted DPS
+curve on the right axis, a summary, and separate turn, split/cumulative and
+stroke-rate tables. Reports for 50-400m fit one page. Longer events continue on
+additional pages and include all 100m splits and average 100m pace. Headings
+use darker grey. Missing speed/DPS values leave gaps in the curves.
+
+The Swimmers section saves names and processed portrait photos in IndexedDB.
+Add photo opens the file/photo picker; Take photo uses a camera capture input
+on supported phones and tablets. Saving requests persistent browser storage on
+a best-effort basis. Profiles stay in the same browser on the same device;
+clearing site data removes them. The app does not sync profiles between devices.
+Race setup selects a saved swimmer or accepts a one-off name. A capture keeps
+a snapshot of the selected name and photo, so later profile edits cannot change
+that race report. No swimmer names, portraits or race data are sent to GitHub.
+
+PDF-Lib 1.17.1 is vendored with its MIT licence. No CDN is required. Standard
+PDF Helvetica fonts support western European text; unsupported report glyphs
+use `?`, while the original name remains in the app and CSV.
+
 Races are held only in the open browser tab. Reloading or starting a new race
 clears the captured race. Backgrounding an active capture marks it interrupted;
 reset is required rather than silently producing unreliable results.

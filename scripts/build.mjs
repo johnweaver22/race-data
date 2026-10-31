@@ -22,7 +22,9 @@ const bundled = `const JSZip = (() => { const module = {exports:{}}; const expor
 await mkdir(path.join(root, 'dist/server'), { recursive: true });
 await mkdir(path.join(root, 'dist/.openai'), { recursive: true });
 await writeFile(path.join(root, 'dist/server/index.js'), bundled);
-await copyFile(path.join(root, '.openai/hosting.json'), path.join(root, 'dist/.openai/hosting.json'));
+try {
+  await copyFile(path.join(root, '.openai/hosting.json'), path.join(root, 'dist/.openai/hosting.json'));
+} catch (error) { if (error.code !== 'ENOENT') throw error; }
 const built = await import(`data:text/javascript;base64,${Buffer.from(bundled).toString('base64')}`);
 if (typeof built.default?.fetch !== 'function') throw new Error('Worker must export fetch');
 console.log('Built and validated the Race Data Worker');

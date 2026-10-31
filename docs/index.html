@@ -8,15 +8,15 @@
   <title>Race Data</title>
   <link rel="icon" type="image/png" href="./assets/rl-logo.png">
   <link rel="apple-touch-icon" href="./assets/rl-logo.png">
-  <link rel="stylesheet" href="./styles.css">
-  <script type="module" src="./app.mjs"></script>
+  <link rel="stylesheet" href="./styles.css?v=0.3.0">
+  <script type="module" src="./app.mjs?v=0.3.0"></script>
 </head>
 <body>
   <div class="app-shell">
     <header class="topbar">
       <a class="brand" href="./" aria-label="RL Race Data home"><img class="brand-logo" src="./assets/rl-logo.png" alt="RL" width="44" height="44"><span>RACE<span class="brand-light">DATA</span></span></a>
       <span class="topbar-purpose">POOLSIDE / RACE CAPTURE</span>
-      <button id="theme-toggle" class="icon-button" type="button" aria-label="Switch to light theme" title="Switch theme"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5"/></svg></button>
+      <div class="topbar-actions"><button id="open-profiles" class="secondary-button" type="button">Swimmers</button><button id="theme-toggle" class="icon-button" type="button" aria-label="Switch to light theme" title="Switch theme"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5"/></svg></button></div>
     </header>
 
     <nav class="steps" aria-label="Race workflow">
@@ -33,6 +33,7 @@
         <div class="setup-grid">
           <form id="setup-form" class="panel setup-panel">
             <div class="section-label"><span>RACE DETAILS</span><span class="tiny-label">ALL TIMES IN SECONDS</span></div>
+            <div class="saved-swimmer"><img id="race-profile-photo" alt="Selected swimmer" hidden><label>Saved swimmer<select id="race-profile"><option value="">Enter a name below</option></select></label></div>
             <div class="field-row"><label>Swimmer<input id="swimmer" name="swimmer" autocomplete="off" maxlength="100" placeholder="Swimmer name" required></label><label>Meet<input id="meet" name="meet" autocomplete="off" maxlength="150" placeholder="Meet name" required></label></div>
             <fieldset><legend>Pool length</legend><div class="segmented pool-options"><label><input type="radio" name="pool" value="25" checked><span>25<span class="unit">m</span><small>SHORT COURSE</small></span></label><label><input type="radio" name="pool" value="50"><span>50<span class="unit">m</span><small>LONG COURSE</small></span></label></div></fieldset>
             <fieldset><legend>Race distance</legend><div class="segmented distance-options" id="distance-options"><label><input type="radio" name="distance" value="50"><span>50</span></label><label><input type="radio" name="distance" value="100" checked><span>100</span></label><label><input type="radio" name="distance" value="200"><span>200</span></label><label><input type="radio" name="distance" value="400"><span>400</span></label><label><input type="radio" name="distance" value="800"><span>800</span></label><label><input type="radio" name="distance" value="1500"><span>1500</span></label></div></fieldset>
@@ -58,8 +59,9 @@
       </section>
 
       <section id="results-view" aria-labelledby="results-title" hidden>
-        <div class="page-heading"><div><p class="eyebrow"><span class="status-dot"></span> RACE COMPLETE</p><h1 id="results-title">Captured<span class="accent">.</span></h1><p id="results-identity" class="intro"></p></div><div class="result-actions"><button id="export-csv" type="button" class="secondary-button" disabled>Download CSV</button><button id="new-race" type="button" class="primary-button">New race <span aria-hidden="true">↗</span></button></div></div>
+        <div class="page-heading"><div><p class="eyebrow"><span class="status-dot"></span> RACE COMPLETE</p><h1 id="results-title">Captured<span class="accent">.</span></h1><p id="results-identity" class="intro"></p></div><div class="result-actions"><button id="export-pdf" type="button" class="secondary-button" disabled>Preparing PDF…</button><button id="export-csv" type="button" class="secondary-button" disabled>Download CSV</button><button id="new-race" type="button" class="primary-button">New race <span aria-hidden="true">↗</span></button></div></div>
         <p id="export-status" class="export-status" role="status" aria-live="polite"></p>
+        <p id="pdf-status" class="export-status" role="status" aria-live="polite"></p>
         <div class="result-summary"><div class="panel total-result"><span class="eyebrow">TOTAL RACE TIME</span><strong id="result-total"></strong></div>
           <section id="summary-splits" class="panel summary-splits" aria-labelledby="summary-splits-title" hidden>
             <h2 id="summary-splits-title" class="eyebrow">Half splits</h2>
@@ -93,9 +95,25 @@
         <details class="panel event-log"><summary>View recorded taps <span id="event-log-count"></span></summary><div class="table-scroll"><table><thead><tr><th>Tap</th><th>Length</th><th>Action</th><th>Elapsed (s)</th></tr></thead><tbody id="event-log-rows"></tbody></table></div></details>
         <p class="result-note">This race is held in this open tab. Starting a new race or reloading clears it.</p>
       </section>
+      <section id="profiles-view" aria-labelledby="profiles-title" hidden>
+        <div class="page-heading"><div><p class="eyebrow">SAVED SWIMMERS</p><h1 id="profiles-title">Swimmer setup<span class="accent">.</span></h1><p class="intro">Save names and photos on this device, then select a swimmer when setting up a race.</p></div><button id="close-profiles" type="button" class="secondary-button">Back to race</button></div>
+        <div class="profiles-layout">
+          <aside class="panel profile-list-panel"><div class="section-label"><span>YOUR SWIMMERS</span></div><label>Choose a swimmer<select id="profile-picker"><option value="">New swimmer</option></select></label><button id="new-profile" type="button" class="secondary-button">Add swimmer</button><p id="profile-count" class="intro">No saved swimmers yet.</p></aside>
+          <form id="profile-form" class="panel profile-editor">
+            <div class="section-label"><span id="profile-editor-title">ADD SWIMMER</span></div>
+            <div class="profile-details"><div class="profile-portrait"><img id="profile-photo" alt="Swimmer portrait" hidden><span id="profile-initials" aria-hidden="true">RL</span></div><div class="profile-name-field"><label>Swimmer name<input id="profile-name" maxlength="100" placeholder="Full name" autocomplete="off" required></label><p class="profile-help">The selected photo appears on their PDF race report.</p></div></div>
+            <div class="photo-actions"><button id="choose-photo" class="secondary-button" type="button">Add photo</button><button id="take-photo" class="secondary-button" type="button">Take photo</button><button id="remove-photo" class="text-button" type="button" hidden>Remove photo</button></div>
+            <input id="photo-upload" type="file" accept="image/*" hidden><input id="photo-camera" type="file" accept="image/*" capture="user" hidden>
+            <p class="profile-help">Take photo opens the camera on supported phones and tablets. Profiles stay in this browser on this device.</p>
+            <p id="profile-status" class="export-status" role="status" aria-live="polite"></p>
+            <div class="profile-save-actions"><button id="save-profile" class="primary-button" type="submit">Save swimmer</button><button id="delete-profile" class="text-button" type="button" hidden>Delete swimmer</button></div>
+          </form>
+        </div>
+      </section>
     </main>
     <footer class="app-footer"><span>RACE DATA</span><span>Observe. Tap. Understand.</span><span>25m / 50m</span></footer>
   </div>
   <dialog id="reset-dialog" aria-labelledby="dialog-title" aria-describedby="dialog-copy"><form method="dialog"><p class="eyebrow">RESET CAPTURE</p><h2 id="dialog-title">Reset this race?</h2><p id="dialog-copy">Recorded taps will be cleared. Your race details will stay.</p><div class="dialog-actions"><button type="submit" value="cancel" class="secondary-button" autofocus>Keep race</button><button type="submit" value="reset" class="danger-button">Reset race</button></div></form></dialog>
+  <dialog id="delete-profile-dialog" aria-labelledby="delete-profile-title"><form method="dialog"><p class="eyebrow">SWIMMER SETUP</p><h2 id="delete-profile-title">Delete this swimmer?</h2><p>The saved name and photo will be removed from this device.</p><div class="dialog-actions"><button class="secondary-button" value="cancel" autofocus>Keep swimmer</button><button class="danger-button" value="delete">Delete swimmer</button></div></form></dialog>
 </body>
 </html>
