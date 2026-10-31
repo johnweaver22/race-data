@@ -94,9 +94,10 @@ checks again after reconnecting, on focus, and periodically while visible.
 Checks are deferred during a capture or while results/profile edits need to
 be kept. **Apply update** is available only between races with no unsaved
 profile edits. Completed results must be exported and explicitly cleared with
-New race before applying an update. Other open Race Data tabs must also be
-safe; unknown old tabs block application until closed. Race setup fields and
-the selected swimmer survive an accepted update.
+New race before applying an update. Only the approving tab reloads. Other
+open or suspended Race Data tabs keep their existing modules and caches;
+they can apply the new version after their own race is finished. Race setup
+fields and the selected swimmer survive an accepted update.
 
 Each release has immutable module URLs and a separate scope-specific cache.
 The install verifies SHA-256 for every required file, including dynamic PDF

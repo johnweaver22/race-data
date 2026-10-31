@@ -5,7 +5,7 @@ export function initializeOffline({ guard, beforeReload, onLock }) {
   const unavailable = { refresh() {}, get locked() { return false; } };
   if (!$('offline-status')) return unavailable;
   let registration, ready = false, checking = false, locked = false, previousController = false;
-  let waiting = null, checkLater = false, lockTimer, lastCheck = 0, installPrompt;
+  let waiting = null, activeNewer = false, checkLater = false, lockTimer, lastCheck = 0, installPrompt;
   const label = $('offline-status'), button = $('apply-update'), notice = $('update-notice');
   $('app-version').textContent = `v${APP_VERSION}`;
   function lock(value) {
@@ -20,9 +20,9 @@ export function initializeOffline({ guard, beforeReload, onLock }) {
       : navigator.onLine === false ? 'Not ready offline · Reconnect to finish setup' : 'Preparing offline use…';
     label.dataset.ready = String(ready);
     $('check-updates').disabled = checking || locked || !!reason || navigator.onLine === false;
-    notice.hidden = !waiting || racing;
+    notice.hidden = !(waiting || activeNewer) || racing;
     button.disabled = locked || !!reason;
-    if (waiting && !locked) $('update-copy').textContent = reason
+    if ((waiting || activeNewer) && !locked) $('update-copy').textContent = reason
       ? reason === 'results' ? 'Update ready. Export this race, then choose New race to apply it.' : 'Update ready. Save your swimmer changes first.'
       : 'Update downloaded. Apply it when you are ready.';
     if (checkLater && !reason && !locked) { checkLater = false; void check(); }
@@ -44,6 +44,7 @@ export function initializeOffline({ guard, beforeReload, onLock }) {
         answer = await message(worker, { type: 'REPAIR_CACHE', release: APP_RELEASE }, 90000);
       }
       ready = !!answer.ready && !!navigator.serviceWorker.controller;
+      if (answer.release) activeNewer = answer.release !== APP_RELEASE;
       render();
     } catch { ready = false; render(); }
   }
@@ -66,15 +67,16 @@ export function initializeOffline({ guard, beforeReload, onLock }) {
       await status(true);
       await registration.update();
       waiting = registration.waiting; render();
-      if (manual && !waiting && !registration.installing) $('update-check-status').textContent = 'Your app is up to date.';
+      if (manual && !waiting && !activeNewer && !registration.installing) $('update-check-status').textContent = 'Your app is up to date.';
     } catch { if (manual) $('update-check-status').textContent = 'Could not check online. Your saved offline version is unchanged.'; }
     finally { checking = false; render(); }
   }
   $('check-updates').addEventListener('click', () => { $('update-check-status').textContent = ''; void check(true); });
   button.addEventListener('click', async () => {
-    if (!waiting || guard() || locked) return;
+    if ((!waiting && !activeNewer) || guard() || locked) return;
     beforeReload(); lock(true); render();
     $('update-copy').textContent = 'Applying update…';
+    if (!waiting && activeNewer) { location.reload(); return; }
     try {
       const answer = await message(waiting, { type: 'APPLY_UPDATE' });
       if (!answer.applied) { lock(false); render(); $('update-copy').textContent = answer.reason; }

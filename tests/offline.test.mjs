@@ -64,9 +64,9 @@ function environment({ caches = new CacheStorage(), cfg = config, clients = [] }
     await work;
     return response === undefined ? undefined : await response;
   };
-  const message = async data => {
+  const message = async (data, requester = clients[0] ?? client()) => {
     let answer;
-    await emit('message', { source: { url: scope }, data, ports: [{ postMessage: value => { answer = value; } }] });
+    await emit('message', { source: requester, data, ports: [{ postMessage: value => { answer = value; } }] });
     return answer;
   };
   return { state, emit, message, caches, clients };
@@ -125,18 +125,23 @@ test('a wrong/missing update file cannot replace or delete the working cache', a
   assert.equal(updated.state.skipped, 0);
 });
 
-test('active races and unresponsive older tabs block activation; safe tabs allow a deliberate update', async () => {
+test('the approving tab must be safe; other busy or suspended race tabs are never reloaded', async () => {
   const busy = client({ safe: false }), safe = client();
   const env = environment({ clients: [busy, safe] }); await env.emit('install');
   const blocked = await env.message({ type: 'APPLY_UPDATE' });
   assert.equal(blocked.applied, false); assert.equal(env.state.skipped, 0);
-  assert.ok(safe.received.some(value => value.type === 'UPDATE_CANCELLED'));
+  assert.equal(safe.received.length, 0, 'other tabs must not be locked or reloaded');
   busy.safe = true;
   assert.equal((await env.message({ type: 'APPLY_UPDATE' })).applied, true);
   assert.equal(env.state.skipped, 1);
-  const old = environment({ clients: [client({ responds: false })] });
-  assert.equal((await old.message({ type: 'APPLY_UPDATE' })).applied, false);
-  assert.equal(old.state.skipped, 0);
+  const suspended = client({ responds: false });
+  const old = environment({ clients: [suspended] });
+  assert.equal((await old.message({ type: 'APPLY_UPDATE' }, client())).applied, true);
+  assert.equal(suspended.received.length, 0);
+  assert.equal(old.state.skipped, 1);
+  const unknownRequester = environment();
+  assert.equal((await unknownRequester.message({ type: 'APPLY_UPDATE' }, client({ responds: false }))).applied, false);
+  assert.equal(unknownRequester.state.skipped, 0);
 });
 
 test('a new worker retains immutable files for old tabs and never touches Swim Clock caches', async () => {
@@ -202,4 +207,15 @@ test('the visible update control blocks races, unexported results and profile ed
   state.reason = 'race'; listeners.controllerchange(); assert.equal(state.reloads, 0);
   state.reason = ''; listeners.controllerchange(); assert.equal(state.reloads, 1);
   assert.ok(state.saves >= 2);
+  // An update approved elsewhere must wait for this tab's own results to clear.
+  listeners.message({ data: { type: 'UPDATE_CANCELLED' } });
+  reg.waiting = null;
+  active.postMessage = (data, ports) => { ports[0].postMessage({ ready: true, release: 'a-newer-release' }); ports[0].close(); };
+  state.reason = 'race'; listeners.controllerchange();
+  await new Promise(resolve => setTimeout(resolve, 20));
+  assert.equal(state.reloads, 1); assert.equal(element('update-notice').hidden, true);
+  state.reason = ''; api.refresh();
+  assert.equal(element('update-notice').hidden, false);
+  await element('apply-update').handlers.click();
+  assert.equal(state.reloads, 2); assert.equal(state.updateMessages, 1);
 });

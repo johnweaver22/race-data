@@ -131,12 +131,14 @@ self.addEventListener('message', event => {
     activating = true;
     let participants = [];
     event.waitUntil((async () => {
-      const clients = (await self.clients.matchAll({ type: 'window', includeUncontrolled: true })).filter(ownClient);
-      participants = clients;
-      const answers = await Promise.all(clients.map(client => ask(client, 'CAN_APPLY_UPDATE')));
-      if (answers.some(value => value?.safe !== true)) {
-        const reason = 'Finish/export races and save profile edits in other Race Data tabs, or close those tabs.';
-        clients.forEach(client => client.postMessage({ type: 'UPDATE_CANCELLED', reason }));
+      // Only the approving tab reloads. Other tabs keep their current modules
+      // and cache, even if a browser has suspended their JavaScript.
+      const requester = event.source;
+      participants = [requester];
+      const answer = await ask(requester, 'CAN_APPLY_UPDATE');
+      if (answer?.safe !== true) {
+        const reason = 'Finish/export this race and save swimmer changes before applying the update.';
+        requester.postMessage({ type: 'UPDATE_CANCELLED', reason });
         reply({ applied: false, reason });
         activating = false;
         return;
