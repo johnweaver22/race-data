@@ -45,9 +45,11 @@ Race setup selects a saved swimmer or accepts a one-off name. A capture keeps
 a snapshot of the selected name and photo, so later profile edits cannot change
 that race report. No swimmer names, portraits or race data are sent to GitHub.
 
-PDF-Lib 1.17.1 is vendored with its MIT licence. No CDN is required. Standard
-PDF Helvetica fonts support western European text; unsupported report glyphs
-use `?`, while the original name remains in the app and CSV.
+PDF-Lib 1.17.1 is vendored with its MIT licence. No CDN is required. Embedded
+DejaVu Sans report fonts cover Latin, Greek and Cyrillic text; unsupported
+report glyphs use `?`, while the original name remains in the app and CSV.
+Font notices are in `web/vendor/Report-Fonts-LICENSE.md`. Regenerate the pinned
+font data with `python scripts/build-report-fonts.py` (requires fontTools).
 
 Races are held only in the open browser tab. Reloading or starting a new race
 clears the captured race. Backgrounding an active capture marks it interrupted;

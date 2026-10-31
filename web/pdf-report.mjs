@@ -1,8 +1,9 @@
-import { PDFDocument, StandardFonts, rgb } from './vendor/pdf-lib.esm.min.mjs';
+import { PDFDocument, rgb } from './vendor/pdf-lib.esm.min.mjs';
 import { reportData, monotonePath } from './report-model.mjs';
 import { formatClock } from './capture-model.mjs';
 import { csvFilename } from './csv-export.mjs';
 import { brandLogo } from './report-brand.mjs';
+import { embedReportFonts } from './report-fonts.mjs';
 
 const W = 841.89, H = 595.28, M = 26;
 const color = hex => rgb(...hex.match(/\w\w/g).map(v => parseInt(v, 16) / 255));
@@ -14,12 +15,11 @@ const number = v => v === null ? '-' : v.toFixed(2);
 export async function createRacePdf(config, timestamps, { portrait = null, date = new Date() } = {}) {
   const model = reportData(config, timestamps);
   const doc = await PDFDocument.create();
-  const normal = await doc.embedFont(StandardFonts.Helvetica);
-  const bold = await doc.embedFont(StandardFonts.HelveticaBold);
+  const [normal, bold] = await embedReportFonts(doc);
   const logo = await doc.embedJpg(brandLogo);
   const image = portrait ? await doc.embedJpg(portrait) : null;
-  // Helvetica supports western European names. Other glyphs use a readable
-  // replacement rather than making the entire completed race unexportable.
+  // The embedded fonts cover Latin, Greek and Cyrillic. Other glyphs use a
+  // replacement rather than making the completed race unexportable.
   function safe(value) {
     return [...String(value)].map(ch => { try { normal.encodeText(ch); return ch; } catch { return '?'; } }).join('');
   }

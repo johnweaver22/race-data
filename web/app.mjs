@@ -33,7 +33,7 @@ async function preparePdf() {
   $('export-pdf').textContent = 'Preparing PDF…';
   $('pdf-status').textContent = 'Preparing your landscape report…';
   try {
-    pdfModule ??= await import('./pdf-report.mjs');
+    pdfModule ??= await import('./pdf-report.mjs?v=0.3.1');
     const portrait = await fadedReportPhoto(race.config.photo);
     const file = await pdfModule.createRacePdf(race.config, race.timestamps, { portrait });
     if (generation !== pdfGeneration || capture !== race) return;
