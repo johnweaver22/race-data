@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#10191f">
+  <meta name="description" content="Capture swimming race splits and stroke rates with one clear tap.">
+  <title>Race Data</title>
+  <link rel="icon" type="image/png" href="./assets/rl-logo.png">
+  <link rel="apple-touch-icon" href="./assets/rl-logo.png">
+  <link rel="stylesheet" href="./styles.css">
+  <script type="module" src="./app.mjs"></script>
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar">
+      <a class="brand" href="./" aria-label="RL Race Data home"><img class="brand-logo" src="./assets/rl-logo.png" alt="RL" width="44" height="44"><span>RACE<span class="brand-light">DATA</span></span></a>
+      <span class="topbar-purpose">POOLSIDE / RACE CAPTURE</span>
+      <button id="theme-toggle" class="icon-button" type="button" aria-label="Switch to light theme" title="Switch theme"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5"/></svg></button>
+    </header>
+
+    <nav class="steps" aria-label="Race workflow">
+      <button id="nav-setup" type="button" aria-current="step"><span>01</span> Set up</button>
+      <span class="step-line"></span>
+      <button id="nav-capture" type="button" disabled><span>02</span> Capture</button>
+      <span class="step-line"></span>
+      <button id="nav-results" type="button" disabled><span>03</span> Results</button>
+    </nav>
+
+    <main>
+      <section id="setup-view" aria-labelledby="setup-title">
+        <div class="page-heading"><div><p class="eyebrow"><span class="status-dot"></span> READY WHEN YOU ARE</p><h1 id="setup-title">Set up a race<span class="accent">.</span></h1><p class="intro">Choose the event. Follow the prompts. Capture every length.</p></div><span class="page-number" aria-hidden="true">01 / 03</span></div>
+        <div class="setup-grid">
+          <form id="setup-form" class="panel setup-panel">
+            <div class="section-label"><span>RACE DETAILS</span><span class="tiny-label">ALL TIMES IN SECONDS</span></div>
+            <div class="field-row"><label>Swimmer<input id="swimmer" name="swimmer" autocomplete="off" maxlength="100" placeholder="Swimmer name" required></label><label>Meet<input id="meet" name="meet" autocomplete="off" maxlength="150" placeholder="Meet name" required></label></div>
+            <fieldset><legend>Pool length</legend><div class="segmented pool-options"><label><input type="radio" name="pool" value="25" checked><span>25<span class="unit">m</span><small>SHORT COURSE</small></span></label><label><input type="radio" name="pool" value="50"><span>50<span class="unit">m</span><small>LONG COURSE</small></span></label></div></fieldset>
+            <fieldset><legend>Race distance</legend><div class="segmented distance-options" id="distance-options"><label><input type="radio" name="distance" value="50"><span>50</span></label><label><input type="radio" name="distance" value="100" checked><span>100</span></label><label><input type="radio" name="distance" value="200"><span>200</span></label><label><input type="radio" name="distance" value="400"><span>400</span></label><label><input type="radio" name="distance" value="800"><span>800</span></label><label><input type="radio" name="distance" value="1500"><span>1500</span></label></div></fieldset>
+            <label>Stroke<div class="select-wrap"><select id="stroke" name="stroke"><option>Freestyle</option><option>Backstroke</option><option>Breaststroke</option><option>Butterfly</option><option value="IM">Individual medley</option></select><span aria-hidden="true">⌄</span></div></label>
+            <p id="setup-error" class="inline-error" role="alert" hidden></p>
+            <div class="form-footer"><span>One swimmer. One race.</span><button class="primary-button" type="submit">Ready to capture <span aria-hidden="true">↗</span></button></div>
+          </form>
+          <aside class="setup-aside">
+            <div class="event-card"><div class="event-card-top"><span class="eyebrow">YOUR EVENT</span><span id="preview-course" class="tag">SC / 25m</span></div><div class="event-distance"><span id="preview-distance">100</span><span>m</span></div><h2 id="preview-stroke">Freestyle</h2><div class="pool-illustration" aria-hidden="true"><div></div><div></div><div></div><span class="pool-arrow">→</span></div><div class="event-card-bottom"><span id="preview-lengths">4 lengths</span><span id="preview-taps">18 taps</span></div></div>
+            <div class="how-it-works"><p class="eyebrow">A CLEAR PROMPT, EVERY TAP</p><p>Start → 15m → stroke rate → wall.</p><p class="muted">Repeat each length. The final length adds a 5m-to-go tap before the finish.</p><div class="cycles-note"><span class="cycle-icon" aria-hidden="true">↻</span><p>Stroke rate uses <strong>3 complete cycles</strong>, measured after the 15m tap.</p></div></div>
+          </aside>
+        </div>
+      </section>
+
+      <section id="capture-view" aria-labelledby="capture-title" hidden>
+        <div class="capture-heading"><div><p id="capture-status" class="eyebrow"><span class="status-dot"></span> READY TO START</p><h1 id="capture-title">Race capture<span class="accent">.</span></h1></div><button id="reset-race" type="button" class="text-button">Reset race <span aria-hidden="true">↺</span></button></div>
+        <div class="race-identity"><div><strong id="capture-swimmer"></strong><span id="capture-meet"></span></div><span id="capture-event" class="tag"></span></div>
+        <div id="interruption" class="interruption" role="alert" hidden>Capture interrupted while this page was hidden. Reset the race to start a new capture.</div>
+        <div class="capture-grid">
+          <div class="capture-main panel"><div class="clock-heading"><span>RACE TIME</span><span id="length-indicator">LENGTH 1 / 4</span></div><div id="race-clock" class="race-clock" aria-label="Race time">0:00<span>.00</span></div><div class="capture-progress" aria-hidden="true"><div id="capture-progress-fill"></div></div><button id="tap-button" type="button" class="tap-button"><span id="tap-kicker" class="tap-kicker">ON THE START SIGNAL</span><strong id="tap-label">GO</strong><span id="tap-help">Tap to start the race timer</span><span class="tap-button-bottom"><span id="tap-number">TAP 1 OF 18</span><span aria-hidden="true">↗</span></span></button><div class="next-prompt"><span>UP NEXT</span><strong id="next-prompt">15m</strong></div></div>
+          <aside class="capture-aside"><div class="panel last-tap"><span class="eyebrow">LAST CAPTURE</span><strong id="last-tap-time">—</strong><span id="last-tap-label" class="muted">Waiting for the start</span></div><div class="panel length-panel"><div class="section-label"><span>LENGTH SPLITS</span><span class="tiny-label">SECONDS</span></div><div id="live-splits" class="live-splits"></div></div><p id="capture-note" class="capture-note">Keep this screen open during the race. Every recorded tap beeps. Turn up your device volume.</p></aside>
+        </div>
+      </section>
+
+      <section id="results-view" aria-labelledby="results-title" hidden>
+        <div class="page-heading"><div><p class="eyebrow"><span class="status-dot"></span> RACE COMPLETE</p><h1 id="results-title">Captured<span class="accent">.</span></h1><p id="results-identity" class="intro"></p></div><div class="result-actions"><button id="export-csv" type="button" class="secondary-button" disabled>Download CSV</button><button id="new-race" type="button" class="primary-button">New race <span aria-hidden="true">↗</span></button></div></div>
+        <p id="export-status" class="export-status" role="status" aria-live="polite"></p>
+        <div class="result-summary"><div class="panel total-result"><span class="eyebrow">TOTAL RACE TIME</span><strong id="result-total"></strong></div>
+          <section id="summary-splits" class="panel summary-splits" aria-labelledby="summary-splits-title" hidden>
+            <h2 id="summary-splits-title" class="eyebrow">Half splits</h2>
+            <div id="average-pace" class="average-pace" hidden><span>AVERAGE 100m PACE</span><strong id="result-average"></strong><span>per 100m</span></div>
+            <div id="summary-splits-content" class="table-scroll"></div>
+          </section>
+          <div class="panel small-result"><span class="eyebrow">START TO 15m</span><strong id="result-start"></strong><span class="muted">seconds</span></div><div class="panel small-result"><span class="eyebrow">FINAL 5m</span><strong id="result-final"></strong><span class="muted">seconds</span></div></div>
+        <div class="panel result-table-panel">
+          <div class="section-label"><span id="length-metrics-title">LENGTH METRICS</span><span id="results-event" class="tiny-label"></span></div>
+          <p id="metrics-scroll-hint" class="metrics-hint">Scroll across the table for all metrics.</p>
+          <div class="table-scroll metrics-scroll" role="region" aria-labelledby="length-metrics-title" aria-describedby="metrics-scroll-hint metrics-note" tabindex="0">
+            <table class="metrics-table"><thead><tr>
+              <th scope="col">Length</th><th scope="col">Stroke</th>
+              <th scope="col">Split <span class="metric-unit">seconds</span></th>
+              <th scope="col">Cumulative <span class="metric-unit">seconds</span></th>
+              <th scope="col">Turn → 15m <span class="metric-unit">seconds</span></th>
+              <th scope="col">Stroke rate <span class="metric-unit">cycles/min</span></th>
+              <th scope="col">Surface speed <span class="metric-unit">m/s · estimated</span></th>
+              <th scope="col">Est. DPS <span class="metric-unit">m/cycle</span></th>
+            </tr></thead><tbody id="result-rows"></tbody></table>
+          </div>
+          <p id="metrics-note" class="metrics-note">Surface speed and estimated DPS use the 15m-to-wall or finish section on every length, including length one. Turn-to-15m does not apply to the first length; start-to-15m is shown above. — means unavailable.</p>
+          <details class="metric-definitions"><summary>About these metrics</summary>
+            <dl>
+              <dt>Turn → 15m</dt><dd>Time from the previous wall tap to the 15m tap on this length. Start-to-15m is shown separately above.</dd>
+              <dt>Surface speed</dt><dd>Estimated speed from the 15m mark to the next wall or finish. Same-stroke freestyle and backstroke turns use a fixed 0.8-second and 1-metre allowance. Open turns, IM stroke changes and finishes use no allowance.</dd>
+              <dt>Estimated DPS</dt><dd>Estimated distance per complete stroke cycle, calculated from surface speed and stroke rate. A cycle uses the same reference point as your three-cycle stroke-rate count.</dd>
+            </dl>
+          </details>
+        </div>
+        <details class="panel event-log"><summary>View recorded taps <span id="event-log-count"></span></summary><div class="table-scroll"><table><thead><tr><th>Tap</th><th>Length</th><th>Action</th><th>Elapsed (s)</th></tr></thead><tbody id="event-log-rows"></tbody></table></div></details>
+        <p class="result-note">This race is held in this open tab. Starting a new race or reloading clears it.</p>
+      </section>
+    </main>
+    <footer class="app-footer"><span>RACE DATA</span><span>Observe. Tap. Understand.</span><span>25m / 50m</span></footer>
+  </div>
+  <dialog id="reset-dialog" aria-labelledby="dialog-title" aria-describedby="dialog-copy"><form method="dialog"><p class="eyebrow">RESET CAPTURE</p><h2 id="dialog-title">Reset this race?</h2><p id="dialog-copy">Recorded taps will be cleared. Your race details will stay.</p><div class="dialog-actions"><button type="submit" value="cancel" class="secondary-button" autofocus>Keep race</button><button type="submit" value="reset" class="danger-button">Reset race</button></div></form></dialog>
+</body>
+</html>
