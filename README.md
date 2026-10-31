@@ -80,6 +80,34 @@ reopens a sample export with Artifact Tool for numeric and visual checks.
 
 See `docs/step-1-verification.md` and `docs/step-2-verification.md`.
 
+## Offline use and updates
+
+Open the current GitHub Pages app online once and wait for **Offline ready**.
+The complete app, timing engine, camera/photo setup, PDF generator, embedded
+fonts and CSV export then work from the saved release without a connection.
+Swimmer profiles remain in the existing device/browser IndexedDB database.
+Add the app to the home screen with Install app where offered, or Safari's
+Share > Add to Home Screen > Open as Web App on iPhone/iPad.
+
+Updates download when online. Check updates also checks manually. The app
+checks again after reconnecting, on focus, and periodically while visible.
+Checks are deferred during a capture or while results/profile edits need to
+be kept. **Apply update** is available only between races with no unsaved
+profile edits. Completed results must be exported and explicitly cleared with
+New race before applying an update. Other open Race Data tabs must also be
+safe; unknown old tabs block application until closed. Race setup fields and
+the selected swimmer survive an accepted update.
+
+Each release has immutable module URLs and a separate scope-specific cache.
+The install verifies SHA-256 for every required file, including dynamic PDF
+dependencies, before declaring readiness. Missing or inconsistent deployments
+cannot replace the working release. Older tabs retain their own modules, and
+cleanup never touches Swim Clock caches or swimmer profiles. Browser site-data
+clearing still removes saved profiles and offline files.
+
+The RL Race Data icon uses the original RL letterforms with an analysis graph;
+the stopwatch remains the separate Swim Clock identity.
+
 ## GitHub repository and testing
 
 Source: https://github.com/johnweaver22/race-data

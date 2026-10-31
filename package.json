@@ -1,12 +1,12 @@
 {
   "name": "race-data-app",
-  "version": "0.3.1",
+  "version": "0.4.0",
   "private": true,
   "type": "module",
   "scripts": {
     "build": "node scripts/build.mjs",
     "build:pages": "node scripts/build-pages.mjs",
-    "test": "node scripts/build.mjs && node --test tests/*.test.mjs",
+    "test": "node scripts/build.mjs && node scripts/build-pages.mjs && node --test tests/*.test.mjs",
     "simulate": "node examples/100m-freestyle.mjs",
     "dev": "node scripts/dev.mjs"
   }

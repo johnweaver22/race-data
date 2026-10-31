@@ -2,7 +2,7 @@ import { createExcelExport, excelFilename, EXCEL_MIME } from '../web/excel-expor
 
 const types = { html: 'text/html; charset=utf-8', mjs: 'text/javascript; charset=utf-8',
   js: 'text/javascript; charset=utf-8', css: 'text/css; charset=utf-8', png: 'image/png',
-  xlsx: EXCEL_MIME, md: 'text/plain; charset=utf-8' };
+  xlsx: EXCEL_MIME, md: 'text/plain; charset=utf-8', webmanifest: 'application/manifest+json' };
 
 export function createRaceWorker(assets) {
   const decode = path => Uint8Array.from(atob(assets[path]), character => character.charCodeAt(0));

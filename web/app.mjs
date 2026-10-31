@@ -4,6 +4,7 @@ import { createTapFeedback } from './tap-feedback.mjs';
 import { downloadCsv } from './csv-export.mjs';
 import { initializeProfiles } from './profiles-ui.mjs';
 import { fadedReportPhoto } from './profiles.mjs';
+import { initializeOffline } from './offline.mjs';
 
 const $ = id => document.getElementById(id);
 const form = $('setup-form');
@@ -19,7 +20,25 @@ let profilesReturnView = 'setup';
 let preparedPdf = null;
 let pdfGeneration = 0;
 let pdfModule;
-const profiles = initializeProfiles();
+let offline;
+const profiles = initializeProfiles({ onChange: () => offline?.refresh() });
+function saveSetupForUpdate() {
+  try {
+    const values = Object.fromEntries(new FormData(form));
+    values.profileId = $('race-profile').value;
+    sessionStorage.setItem('race-data-update-setup', JSON.stringify(values));
+  } catch { /* Profiles are independently retained in IndexedDB. */ }
+}
+offline = initializeOffline({
+  guard: () => capture?.timestamps.length ? capture.state === 'running' ? 'race' : 'results'
+    : profiles.hasUnsavedChanges() ? 'profile' : '',
+  beforeReload: saveSetupForUpdate,
+  onLock: value => {
+    document.querySelector('main').inert = value;
+    document.querySelector('.steps').inert = value;
+    $('open-profiles').disabled = value || capture?.state === 'running' || capture?.state === 'interrupted';
+  },
+});
 function clearExport() {
   $('export-csv').disabled = capture?.state !== 'complete';
   $('export-status').replaceChildren();
@@ -33,7 +52,7 @@ async function preparePdf() {
   $('export-pdf').textContent = 'Preparing PDF…';
   $('pdf-status').textContent = 'Preparing your landscape report…';
   try {
-    pdfModule ??= await import('./pdf-report.mjs?v=0.3.1');
+    pdfModule ??= await import('./pdf-report.mjs');
     const portrait = await fadedReportPhoto(race.config.photo);
     const file = await pdfModule.createRacePdf(race.config, race.timestamps, { portrait });
     if (generation !== pdfGeneration || capture !== race) return;
@@ -106,6 +125,7 @@ function showView(view) {
   $('nav-capture').disabled = !capture || capture.state === 'complete';
   $('nav-results').disabled = capture?.state !== 'complete';
   $('open-profiles').disabled = capture?.state === 'running' || capture?.state === 'interrupted';
+  offline.refresh();
   window.scrollTo({ top: 0, behavior: 'instant' });
 }
 
@@ -174,6 +194,7 @@ function paintCapture() {
   if (!next) return;
   $('nav-setup').disabled = capture.state !== 'ready';
   $('open-profiles').disabled = capture.state !== 'ready';
+  offline.refresh();
   const count = capture.timestamps.length;
   const lengthCount = capture.config.distance / capture.config.pool;
   const length = Math.max(1, next.length);
@@ -281,7 +302,7 @@ function paintResults() {
 
 function recordTap() {
   const timestamp = now(); // Capture before layout, calculation, or asynchronous work.
-  if (activeView !== 'capture' || $('reset-dialog').open || !capture) return;
+  if (offline.locked || activeView !== 'capture' || $('reset-dialog').open || !capture) return;
   if (!capture.record(timestamp)) return;
   tapFeedback.beep();
   if (capture.state === 'complete') {
@@ -303,6 +324,7 @@ form.addEventListener('input', () => {
 form.addEventListener('change', syncSetup);
 form.addEventListener('submit', event => {
   event.preventDefault();
+  if (offline.locked) return;
   for (const input of [$('swimmer'), $('meet')]) {
     input.setCustomValidity(input.value.trim() ? '' : `Enter a ${input.id === 'swimmer' ? 'swimmer' : 'meet'} name.`);
   }
@@ -404,4 +426,17 @@ window.addEventListener('beforeunload', event => {
 $('race-clock').setAttribute('role', 'timer');
 $('race-clock').setAttribute('aria-live', 'off');
 $('capture-status').setAttribute('aria-live', 'polite');
+try {
+  const values = JSON.parse(sessionStorage.getItem('race-data-update-setup') || 'null');
+  if (values) {
+    for (const name of ['swimmer', 'meet']) if (typeof values[name] === 'string') $(name).value = values[name];
+    for (const name of ['pool', 'distance']) {
+      const field = [...form.querySelectorAll(`input[name="${name}"]`)].find(input => input.value === values[name]);
+      if (field) field.checked = true;
+    }
+    if ([...$('stroke').options].some(option => option.value === values.stroke)) $('stroke').value = values.stroke;
+    void profiles.restoreRaceSelection(values.profileId, values.swimmer);
+    sessionStorage.removeItem('race-data-update-setup');
+  }
+} catch { /* A blocked session store does not block timing. */ }
 syncSetup();

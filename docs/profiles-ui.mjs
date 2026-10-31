@@ -1,6 +1,6 @@
 import { listProfiles, saveProfile, removeProfile, readProfilePhoto } from './profiles.mjs';
 
-export function initializeProfiles() {
+export function initializeProfiles({ onChange = () => {} } = {}) {
   const $ = id => document.getElementById(id);
   let profiles = [], editorId = '', editorPhoto = null, photoGeneration = 0;
   const status = message => { $('profile-status').textContent = message; };
@@ -32,6 +32,7 @@ export function initializeProfiles() {
     $('delete-profile').hidden = !profile;
     $('save-profile').disabled = false;
     status(''); paintEditorPhoto();
+    onChange();
   }
   async function refresh() {
     const raceId = $('race-profile').value;
@@ -52,29 +53,31 @@ export function initializeProfiles() {
   });
   $('profile-picker').addEventListener('change', () => edit($('profile-picker').value));
   $('new-profile').addEventListener('click', () => { edit(); $('profile-name').focus(); });
-  $('profile-name').addEventListener('input', paintEditorPhoto);
+  $('profile-name').addEventListener('input', () => { paintEditorPhoto(); onChange(); });
   $('choose-photo').addEventListener('click', () => $('photo-upload').click());
   $('take-photo').addEventListener('click', () => $('photo-camera').click());
   for (const id of ['photo-upload', 'photo-camera']) $(id).addEventListener('change', async event => {
     const file = event.target.files?.[0]; event.target.value = '';
     if (!file) return;
     const generation = ++photoGeneration;
-    $('save-profile').disabled = true; status('Opening photo…');
+    $('save-profile').disabled = true; status('Opening photo…'); onChange();
     try {
       const photo = await readProfilePhoto(file);
       if (generation !== photoGeneration) return;
       editorPhoto = photo; paintEditorPhoto(); status('Photo ready. Save swimmer to keep it.');
     } catch (error) { if (generation === photoGeneration) status(error.message); }
-    finally { if (generation === photoGeneration) $('save-profile').disabled = false; }
+    finally { if (generation === photoGeneration) { $('save-profile').disabled = false; onChange(); } }
   });
   $('remove-photo').addEventListener('click', () => {
     photoGeneration++; editorPhoto = null; paintEditorPhoto(); $('save-profile').disabled = false;
     status('Photo removed. Save swimmer to keep this change.');
+    onChange();
   });
   $('profile-form').addEventListener('submit', async event => {
     event.preventDefault();
     if ($('save-profile').disabled) return;
     $('save-profile').disabled = true;
+    onChange();
     try {
       const profile = await saveProfile({ id: editorId, name: $('profile-name').value, photo: editorPhoto });
       // Use the edited/created swimmer in the next race setup, but completed
@@ -83,7 +86,7 @@ export function initializeProfiles() {
       $('race-profile').value = profile.id; $('swimmer').value = profile.name; racePhoto();
       status('Swimmer saved on this device.');
     } catch (error) { status(`Could not save. ${error.message}`); }
-    finally { $('save-profile').disabled = false; }
+    finally { $('save-profile').disabled = false; onChange(); }
   });
   $('delete-profile').addEventListener('click', () => {
     $('delete-profile-dialog').returnValue = 'cancel'; $('delete-profile-dialog').showModal();
@@ -93,6 +96,16 @@ export function initializeProfiles() {
     try { await removeProfile(editorId); await refresh(); edit(); status('Swimmer deleted from this device.'); }
     catch (error) { status(`Could not delete. ${error.message}`); }
   });
-  void refresh().catch(() => status('Profiles are unavailable. Check browser storage, then reload. You can still enter a name for a race.'));
-  return { forRace: () => { const p = racePhoto(); return { profileId: p?.id ?? null, photo: p?.photo ?? null }; } };
+  const ready = refresh().catch(() => status('Profiles are unavailable. Check browser storage, then reload. You can still enter a name for a race.'));
+  return {
+    forRace: () => { const p = racePhoto(); return { profileId: p?.id ?? null, photo: p?.photo ?? null }; },
+    hasUnsavedChanges: () => {
+      const saved = profiles.find(p => p.id === editorId);
+      return $('save-profile').disabled || $('profile-name').value.trim() !== (saved?.name ?? '') || editorPhoto !== (saved?.photo ?? null);
+    },
+    restoreRaceSelection: async (id, name) => {
+      await ready;
+      if (profiles.some(p => p.id === id && p.name === name)) { $('race-profile').value = id; racePhoto(); }
+    },
+  };
 }

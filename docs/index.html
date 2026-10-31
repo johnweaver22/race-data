@@ -4,21 +4,27 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#10191f">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Race Data">
   <meta name="description" content="Capture swimming race splits and stroke rates with one clear tap.">
   <title>Race Data</title>
-  <link rel="icon" type="image/png" href="./assets/rl-logo.png">
-  <link rel="apple-touch-icon" href="./assets/rl-logo.png">
-  <link rel="stylesheet" href="./styles.css?v=0.3.1">
-  <script type="module" src="./app.mjs?v=0.3.1"></script>
+  <link rel="icon" type="image/png" href="./assets/race-data-icon-192.png">
+  <link rel="apple-touch-icon" href="./assets/race-data-icon-180.png">
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="stylesheet" href="./releases/0.4.0-0185e1837050f4f0/styles.css">
+  <script type="module" src="./releases/0.4.0-0185e1837050f4f0/app.mjs"></script>
 </head>
 <body>
   <div class="app-shell">
     <header class="topbar">
-      <a class="brand" href="./" aria-label="RL Race Data home"><img class="brand-logo" src="./assets/rl-logo.png" alt="RL" width="44" height="44"><span>RACE<span class="brand-light">DATA</span></span></a>
+      <a class="brand" href="./" aria-label="RL Race Data home"><img class="brand-logo" src="./assets/race-data-icon-192.png" alt="RL Race Data" width="44" height="44"><span>RACE<span class="brand-light">DATA</span></span></a>
       <span class="topbar-purpose">POOLSIDE / RACE CAPTURE</span>
       <div class="topbar-actions"><button id="open-profiles" class="secondary-button" type="button">Swimmers</button><button id="theme-toggle" class="icon-button" type="button" aria-label="Switch to light theme" title="Switch theme"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5"/></svg></button></div>
     </header>
 
+    <div class="offline-bar"><div class="offline-state"><span id="offline-status" role="status" aria-live="polite">Preparing offline use…</span><span id="app-version"></span></div><div class="offline-extra"><button id="check-updates" type="button" class="text-button">Check updates</button><button id="install-app" type="button" class="secondary-button" hidden>Install app</button><details class="install-help"><summary>Install help</summary><p>Open online once and wait for <strong>Offline ready</strong>.<br>iPhone/iPad: Safari → Share → Add to Home Screen → Open as Web App.<br>Android: browser menu → Install app or Add to Home screen.<br>Keep this app's browser data to keep your swimmers and offline files.</p></details></div></div>
+    <div id="update-notice" class="update-notice" role="status" hidden><span id="update-copy">Update downloaded.</span><button id="apply-update" class="secondary-button" type="button">Apply update</button></div>
+    <p id="update-check-status" class="update-check-status" role="status" aria-live="polite"></p>
     <nav class="steps" aria-label="Race workflow">
       <button id="nav-setup" type="button" aria-current="step"><span>01</span> Set up</button>
       <span class="step-line"></span>
