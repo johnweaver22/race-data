@@ -19,7 +19,7 @@ export function initializeOffline({ guard, beforeReload, onLock }) {
     label.textContent = ready ? `Offline ready${navigator.onLine === false ? ' · Offline' : ''}`
       : navigator.onLine === false ? 'Not ready offline · Reconnect to finish setup' : 'Preparing offline use…';
     label.dataset.ready = String(ready);
-    $('check-updates').disabled = checking || locked || racing || navigator.onLine === false;
+    $('check-updates').disabled = checking || locked || !!reason || navigator.onLine === false;
     notice.hidden = !waiting || racing;
     button.disabled = locked || !!reason;
     if (waiting && !locked) $('update-copy').textContent = reason
